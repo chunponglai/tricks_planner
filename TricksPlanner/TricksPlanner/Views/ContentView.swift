@@ -32,6 +32,13 @@ struct ContentView: View {
                 .tabItem {
                     Label("Combo", systemImage: "shuffle")
                 }
+
+                NavigationStack {
+                    CalendarView()
+                }
+                .tabItem {
+                    Label("Calendar", systemImage: "calendar")
+                }
             }
             .tint(Theme.accent)
 

@@ -16,6 +16,13 @@ final class TrickStore: ObservableObject {
         }
     }
 
+    @Published private(set) var challenges: [Challenge] = [] {
+        didSet {
+            guard hasLoaded else { return }
+            saveChallenges()
+        }
+    }
+
     private var hasLoaded = false
 
     init() {
@@ -87,11 +94,44 @@ final class TrickStore: ObservableObject {
         return combo
     }
 
+    // MARK: - Challenges
+
+    func addChallenge(combo: [Trick], date: Date) {
+        let day = Calendar.current.startOfDay(for: date)
+        let challenge = Challenge(date: day, combo: combo, status: .notDone)
+        challenges.append(challenge)
+        challenges.sort { $0.date > $1.date }
+    }
+
+    func updateChallengeStatus(_ challenge: Challenge, status: ChallengeStatus) {
+        guard let index = challenges.firstIndex(where: { $0.id == challenge.id }) else { return }
+        challenges[index].status = status
+    }
+
+    func deleteChallenges(at offsets: IndexSet, on date: Date) {
+        let dayChallenges = challenges(on: date)
+        let idsToDelete = offsets.map { dayChallenges[$0].id }
+        challenges.removeAll { idsToDelete.contains($0.id) }
+    }
+
+    func challenges(on date: Date) -> [Challenge] {
+        let day = Calendar.current.startOfDay(for: date)
+        return challenges.filter { Calendar.current.isDate($0.date, inSameDayAs: day) }
+    }
+
+    func successRate() -> Double {
+        let completed = challenges.filter { $0.status != .notDone }
+        guard !completed.isEmpty else { return 0 }
+        let successCount = completed.filter { $0.status == .success }.count
+        return Double(successCount) / Double(completed.count)
+    }
+
     // MARK: - Persistence
 
     private func load() {
         let loadedTricks = loadJSON([Trick].self, from: tricksURL()) ?? []
         let loadedCategories = loadJSON([String].self, from: categoriesURL()) ?? []
+        let loadedChallenges = loadJSON([Challenge].self, from: challengesURL()) ?? []
 
         if loadedTricks.isEmpty {
             tricks = SampleData.tricks
@@ -105,6 +145,7 @@ final class TrickStore: ObservableObject {
             categories = loadedCategories
         }
 
+        challenges = loadedChallenges
         sortTricks()
     }
 
@@ -115,6 +156,10 @@ final class TrickStore: ObservableObject {
 
     private func saveCategories() {
         saveJSON(categories, to: categoriesURL())
+    }
+
+    private func saveChallenges() {
+        saveJSON(challenges, to: challengesURL())
     }
 
     private func mergeCategories(from tricks: [Trick], existing: [String] = []) -> [String] {
@@ -139,6 +184,10 @@ final class TrickStore: ObservableObject {
 
     private func categoriesURL() -> URL {
         documentsDirectory().appendingPathComponent("categories.json")
+    }
+
+    private func challengesURL() -> URL {
+        documentsDirectory().appendingPathComponent("challenges.json")
     }
 
     private func documentsDirectory() -> URL {

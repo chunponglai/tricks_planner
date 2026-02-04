@@ -30,6 +30,17 @@ enum Theme {
         }
     }
 
+    static func statusColor(_ status: ChallengeStatus) -> Color {
+        switch status {
+        case .notDone:
+            return Color(.systemGray3)
+        case .success:
+            return Color(red: 0.20, green: 0.68, blue: 0.38)
+        case .fail:
+            return Color(red: 0.86, green: 0.23, blue: 0.20)
+        }
+    }
+
     static func titleFont(size: CGFloat) -> Font {
         .custom("AvenirNext-DemiBold", size: size)
     }

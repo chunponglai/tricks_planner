@@ -9,6 +9,36 @@ enum Difficulty: String, CaseIterable, Identifiable, Codable {
     var id: String { rawValue }
 }
 
+enum ChallengeStatus: String, CaseIterable, Identifiable, Codable {
+    case notDone
+    case success
+    case fail
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .notDone: return "Not Done"
+        case .success: return "Success"
+        case .fail: return "Fail"
+        }
+    }
+}
+
+struct Challenge: Identifiable, Codable, Equatable {
+    let id: UUID
+    var date: Date
+    var combo: [Trick]
+    var status: ChallengeStatus
+
+    init(id: UUID = UUID(), date: Date, combo: [Trick], status: ChallengeStatus = .notDone) {
+        self.id = id
+        self.date = date
+        self.combo = combo
+        self.status = status
+    }
+}
+
 struct Trick: Identifiable, Codable, Equatable {
     let id: UUID
     var name: String
