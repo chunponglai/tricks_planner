@@ -6,6 +6,11 @@ struct ComboGeneratorView: View {
     @State private var combo: [Trick] = []
     @State private var showCombo = false
 
+    private var categoriesWithTricks: [String] {
+        let categories = Set(store.tricks.map { $0.category })
+        return store.categories.filter { categories.contains($0) }
+    }
+
     var body: some View {
         List {
             Section {
@@ -27,10 +32,10 @@ struct ComboGeneratorView: View {
             }
 
             Section("Pick Categories") {
-                if store.categories.isEmpty {
+                if categoriesWithTricks.isEmpty {
                     ContentUnavailableView("No Categories", systemImage: "tag", description: Text("Add some tricks first."))
                 } else {
-                    ForEach(store.categories, id: \.self) { category in
+                    ForEach(categoriesWithTricks, id: \.self) { category in
                         let maxCount = max(store.tricks.filter { $0.category == category }.count, 1)
                         Stepper(value: Binding(
                             get: { selections[category, default: 0] },
@@ -48,6 +53,12 @@ struct ComboGeneratorView: View {
             }
 
             Section {
+                Button("Reset") {
+                    selections = [:]
+                    combo = []
+                }
+                .foregroundStyle(Theme.textSecondary)
+
                 Button("Generate Combo") {
                     combo = store.randomCombo(from: selections)
                     showCombo = true
@@ -58,6 +69,14 @@ struct ComboGeneratorView: View {
             }
         }
         .navigationTitle("Combo")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Reset") {
+                    selections = [:]
+                    combo = []
+                }
+            }
+        }
         .scrollContentBackground(.hidden)
         .navigationDestination(isPresented: $showCombo) {
             ComboResultsScreen(combo: combo)

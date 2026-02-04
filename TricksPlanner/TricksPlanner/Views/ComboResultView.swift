@@ -6,6 +6,9 @@ struct ComboResultView: View {
     var body: some View {
         ForEach(combo) { trick in
             HStack {
+                Circle()
+                    .fill(Theme.difficultyColor(trick.difficulty))
+                    .frame(width: 8, height: 8)
                 Text(trick.name)
                     .font(Theme.bodyFont(size: 16))
                     .foregroundStyle(Theme.textPrimary)

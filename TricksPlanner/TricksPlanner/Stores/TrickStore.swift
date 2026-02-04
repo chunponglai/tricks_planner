@@ -25,7 +25,7 @@ final class TrickStore: ObservableObject {
 
     // MARK: - CRUD
 
-    func addTrick(name: String, category: String) {
+    func addTrick(name: String, category: String, difficulty: Difficulty) {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanName.isEmpty, !cleanCategory.isEmpty else { return }
@@ -34,12 +34,12 @@ final class TrickStore: ObservableObject {
             categories.append(cleanCategory)
         }
 
-        let newTrick = Trick(name: cleanName, category: cleanCategory)
+        let newTrick = Trick(name: cleanName, category: cleanCategory, difficulty: difficulty)
         tricks.append(newTrick)
         sortTricks()
     }
 
-    func updateTrick(_ trick: Trick, name: String, category: String) {
+    func updateTrick(_ trick: Trick, name: String, category: String, difficulty: Difficulty) {
         guard let index = tricks.firstIndex(where: { $0.id == trick.id }) else { return }
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -51,6 +51,7 @@ final class TrickStore: ObservableObject {
 
         tricks[index].name = cleanName
         tricks[index].category = cleanCategory
+        tricks[index].difficulty = difficulty
         sortTricks()
     }
 

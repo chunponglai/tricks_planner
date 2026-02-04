@@ -45,7 +45,7 @@ struct TrickListView: View {
                         ForEach(group.value) { trick in
                             HStack(spacing: 12) {
                                 Circle()
-                                    .fill(Theme.accent.opacity(0.9))
+                                    .fill(Theme.difficultyColor(trick.difficulty))
                                     .frame(width: 8, height: 8)
                                 Text(trick.name)
                                     .font(Theme.bodyFont(size: 16))

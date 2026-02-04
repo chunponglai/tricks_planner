@@ -21,6 +21,7 @@ struct TrickEditorView: View {
     @State private var name: String = ""
     @State private var category: String = CategoryLibrary.defaultCategories.first ?? "Flips"
     @State private var newCategory: String = ""
+    @State private var difficulty: Difficulty = .none
 
     var body: some View {
         Form {
@@ -36,6 +37,15 @@ struct TrickEditorView: View {
                 }
 
                 TextField("Or add new category", text: $newCategory)
+            }
+
+            Section("Difficulty") {
+                Picker("Difficulty", selection: $difficulty) {
+                    ForEach(Difficulty.allCases) { option in
+                        Text(option.rawValue.capitalized).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
             }
         }
         .navigationTitle(title)
@@ -64,6 +74,7 @@ struct TrickEditorView: View {
         guard case let .edit(trick) = mode else { return }
         name = trick.name
         category = trick.category
+        difficulty = trick.difficulty
     }
 
     private func save() {
@@ -73,9 +84,9 @@ struct TrickEditorView: View {
 
         switch mode {
         case .add:
-            store.addTrick(name: name, category: finalCategory)
+            store.addTrick(name: name, category: finalCategory, difficulty: difficulty)
         case .edit(let trick):
-            store.updateTrick(trick, name: name, category: finalCategory)
+            store.updateTrick(trick, name: name, category: finalCategory, difficulty: difficulty)
         }
 
         dismiss()
