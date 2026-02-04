@@ -3,10 +3,14 @@ import SwiftUI
 struct CalendarView: View {
     @EnvironmentObject private var store: TrickStore
     @State private var monthOffset = 0
-    @State private var selectedDate: Date?
-    @State private var showDaySheet = false
+    @State private var selectedDay: SelectedDay?
 
     private var calendar: Calendar { Calendar.current }
+
+    private struct SelectedDay: Identifiable {
+        let id = UUID()
+        let date: Date
+    }
 
     private var monthDate: Date {
         calendar.date(byAdding: .month, value: monthOffset, to: Date()) ?? Date()
@@ -100,8 +104,7 @@ struct CalendarView: View {
                                 let isToday = calendar.isDateInToday(date)
                                 let count = challengeCount(for: date)
                                 Button {
-                                    selectedDate = date
-                                    showDaySheet = true
+                                    selectedDay = SelectedDay(date: date)
                                 } label: {
                                     VStack(spacing: 4) {
                                         Text("\(calendar.component(.day, from: date))")
@@ -150,11 +153,9 @@ struct CalendarView: View {
         .navigationTitle("Calendar")
         .scrollContentBackground(.hidden)
         .background(Theme.background.ignoresSafeArea())
-        .sheet(isPresented: $showDaySheet) {
-            if let date = selectedDate {
-                DayChallengesView(date: date)
-                    .environmentObject(store)
-            }
+        .sheet(item: $selectedDay) { item in
+            DayChallengesView(date: item.date)
+                .environmentObject(store)
         }
     }
 }
