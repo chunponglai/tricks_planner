@@ -35,13 +35,14 @@ final class TrickStore: ObservableObject {
     func addTrick(name: String, category: String, difficulty: Difficulty) {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanName.isEmpty, !cleanCategory.isEmpty else { return }
+        guard !cleanName.isEmpty else { return }
 
-        if !categories.contains(cleanCategory) {
-            categories.append(cleanCategory)
+        let finalCategory = cleanCategory.isEmpty ? "Uncategorized" : cleanCategory
+        if !categories.contains(finalCategory) {
+            categories.append(finalCategory)
         }
 
-        let newTrick = Trick(name: cleanName, category: cleanCategory, difficulty: difficulty)
+        let newTrick = Trick(name: cleanName, category: finalCategory, difficulty: difficulty)
         tricks.append(newTrick)
         sortTricks()
     }
@@ -50,14 +51,15 @@ final class TrickStore: ObservableObject {
         guard let index = tricks.firstIndex(where: { $0.id == trick.id }) else { return }
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanName.isEmpty, !cleanCategory.isEmpty else { return }
+        guard !cleanName.isEmpty else { return }
 
-        if !categories.contains(cleanCategory) {
-            categories.append(cleanCategory)
+        let finalCategory = cleanCategory.isEmpty ? "Uncategorized" : cleanCategory
+        if !categories.contains(finalCategory) {
+            categories.append(finalCategory)
         }
 
         tricks[index].name = cleanName
-        tricks[index].category = cleanCategory
+        tricks[index].category = finalCategory
         tricks[index].difficulty = difficulty
         sortTricks()
     }
@@ -78,16 +80,62 @@ final class TrickStore: ObservableObject {
         categories.sort()
     }
 
+    func renameCategory(from oldName: String, to newName: String) {
+        let cleanOld = oldName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanNew = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanOld.isEmpty, !cleanNew.isEmpty else { return }
+        guard cleanOld != cleanNew else { return }
+        guard let index = categories.firstIndex(of: cleanOld) else { return }
+        categories[index] = cleanNew
+        categories.sort()
+
+        for i in tricks.indices {
+            if tricks[i].category == cleanOld {
+                tricks[i].category = cleanNew
+            }
+        }
+        sortTricks()
+    }
+
+    func deleteCategory(_ name: String) {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { return }
+        let fallback = "Uncategorized"
+        if !categories.contains(fallback) {
+            categories.append(fallback)
+        }
+        categories.removeAll { $0 == cleanName }
+        for i in tricks.indices {
+            if tricks[i].category == cleanName {
+                tricks[i].category = fallback
+            }
+        }
+    }
+
     // MARK: - Combo
 
-    func randomCombo(from selections: [String: Int]) -> [Trick] {
-        let categoryList = selections.isEmpty ? categories : selections.keys.sorted()
+    private func difficultyRank(_ difficulty: Difficulty) -> Int {
+        switch difficulty {
+        case .none: return 0
+        case .easy: return 1
+        case .medium: return 2
+        case .hard: return 3
+        }
+    }
+
+    func randomCombo(from selections: [String: Int], maxDifficulty: Difficulty, randomAll: Bool) -> [Trick] {
+        let allowedRank = difficultyRank(maxDifficulty)
+        let filteredTricks = tricks.filter { difficultyRank($0.difficulty) <= allowedRank }
+        let categoriesWithTricks = Set(filteredTricks.map { $0.category })
+        let categoryList = randomAll
+            ? categories.filter { categoriesWithTricks.contains($0) }
+            : (selections.isEmpty ? categories : selections.keys.sorted())
         var combo: [Trick] = []
 
         for category in categoryList {
-            let count = selections[category] ?? 1
+            let count = randomAll ? 1 : (selections[category] ?? 1)
             guard count > 0 else { continue }
-            let options = tricks.filter { $0.category == category }.shuffled()
+            let options = filteredTricks.filter { $0.category == category }.shuffled()
             combo.append(contentsOf: options.prefix(count))
         }
 
@@ -112,6 +160,10 @@ final class TrickStore: ObservableObject {
         let dayChallenges = challenges(on: date)
         let idsToDelete = offsets.map { dayChallenges[$0].id }
         challenges.removeAll { idsToDelete.contains($0.id) }
+    }
+
+    func deleteChallenge(_ challenge: Challenge) {
+        challenges.removeAll { $0.id == challenge.id }
     }
 
     func challenges(on date: Date) -> [Challenge] {
@@ -140,9 +192,13 @@ final class TrickStore: ObservableObject {
         }
 
         if loadedCategories.isEmpty {
-            categories = mergeCategories(from: tricks)
+            categories = mergeCategories(from: tricks, existing: CategoryLibrary.defaultCategories)
         } else {
             categories = loadedCategories
+        }
+
+        if !categories.contains("Uncategorized") {
+            categories.append("Uncategorized")
         }
 
         challenges = loadedChallenges
@@ -165,7 +221,7 @@ final class TrickStore: ObservableObject {
     private func mergeCategories(from tricks: [Trick], existing: [String] = []) -> [String] {
         let trickCategories = Set(tricks.map { $0.category })
         let existingSet = Set(existing)
-        let combined = trickCategories.union(existingSet).union(CategoryLibrary.defaultCategories)
+        let combined = trickCategories.union(existingSet)
         return Array(combined).sorted()
     }
 

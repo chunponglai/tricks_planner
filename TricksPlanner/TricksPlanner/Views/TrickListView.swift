@@ -4,10 +4,18 @@ struct TrickListView: View {
     @EnvironmentObject private var store: TrickStore
     @State private var showAdd = false
     @State private var editTrick: Trick?
+    @State private var newCategory = ""
+    @State private var editingCategory: EditingCategory?
+    @State private var editCategoryName = ""
+
+    private struct EditingCategory: Identifiable {
+        let id = UUID()
+        let name: String
+    }
 
     private var grouped: [(key: String, value: [Trick])] {
         let groups = Dictionary(grouping: store.tricks, by: { $0.category })
-        return groups.keys.sorted().map { key in
+        return store.categories.sorted().map { key in
             (key, groups[key] ?? [])
         }
     }
@@ -32,16 +40,48 @@ struct TrickListView: View {
                 .listRowBackground(Color.clear)
             }
 
-            if store.tricks.isEmpty {
-                ContentUnavailableView("No Tricks Yet", systemImage: "skateboard", description: Text("Add a trick to get started."))
-            } else {
-                ForEach(grouped, id: \.key) { group in
-                    Section {
+            Section {
+                HStack {
+                    TextField("New category", text: $newCategory)
+                    Button("Add") {
+                        store.addCategory(newCategory)
+                        newCategory = ""
+                    }
+                    .disabled(newCategory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+
+            ForEach(grouped, id: \.key) { group in
+                Section {
+                    HStack {
                         Text(group.key.uppercased())
                             .font(Theme.bodyFont(size: 12))
                             .foregroundStyle(Theme.textSecondary)
-                            .listRowBackground(Color.clear)
+                        Spacer()
+                        Button {
+                            editingCategory = EditingCategory(name: group.key)
+                            editCategoryName = group.key
+                        } label: {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(.plain)
+                        Button(role: .destructive) {
+                            store.deleteCategory(group.key)
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .listRowBackground(Color.clear)
 
+                    if group.value.isEmpty {
+                        Text("No tricks in this category.")
+                            .font(Theme.bodyFont(size: 13))
+                            .foregroundStyle(Theme.textSecondary)
+                            .listRowBackground(Color.clear)
+                    } else {
                         ForEach(group.value) { trick in
                             HStack(spacing: 12) {
                                 Circle()
@@ -68,8 +108,8 @@ struct TrickListView: View {
                             delete(at: offsets, in: group.key)
                         }
                     }
-                    .textCase(nil)
                 }
+                .textCase(nil)
             }
         }
         .navigationTitle("Tricks")
@@ -93,6 +133,26 @@ struct TrickListView: View {
         .sheet(item: $editTrick) { trick in
             NavigationStack {
                 TrickEditorView(mode: .edit(trick))
+            }
+        }
+        .sheet(item: $editingCategory) { item in
+            NavigationStack {
+                Form {
+                    TextField("Category name", text: $editCategoryName)
+                }
+                .navigationTitle("Edit Category")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { editingCategory = nil }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            store.renameCategory(from: item.name, to: editCategoryName)
+                            editingCategory = nil
+                        }
+                        .disabled(editCategoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
             }
         }
     }

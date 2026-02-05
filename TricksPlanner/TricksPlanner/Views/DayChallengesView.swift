@@ -54,6 +54,11 @@ struct DayChallengesView: View {
                                 store.addChallenge(combo: challenge.combo, date: Date())
                             }
                             .foregroundStyle(Theme.accent)
+
+                            Button("Delete Challenge") {
+                                store.deleteChallenge(challenge)
+                            }
+                            .foregroundStyle(.red)
                         }
                     }
                     .onDelete { offsets in

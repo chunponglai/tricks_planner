@@ -19,7 +19,7 @@ struct TrickEditorView: View {
     let mode: Mode
 
     @State private var name: String = ""
-    @State private var category: String = CategoryLibrary.defaultCategories.first ?? "Flips"
+    @State private var category: String = "Uncategorized"
     @State private var newCategory: String = ""
     @State private var difficulty: Difficulty = .none
 
