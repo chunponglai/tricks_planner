@@ -249,7 +249,7 @@ struct CalendarView: View {
                                         .foregroundStyle(Theme.textSecondary)
                                     Spacer()
                                     if let templateId = key,
-                                       let template = store.trainingTemplates.first(where: { $0.id == templateId }) {
+                                       let _ = store.trainingTemplates.first(where: { $0.id == templateId }) {
                                         Text("Template")
                                             .font(Theme.bodyFont(size: 12))
                                             .foregroundStyle(Theme.textSecondary)

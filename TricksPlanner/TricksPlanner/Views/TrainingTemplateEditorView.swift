@@ -20,7 +20,8 @@ struct TrainingTemplateEditorView: View {
                 if template.items.isEmpty {
                     ContentUnavailableView("No Items", systemImage: "list.bullet")
                 } else {
-                    ForEach(template.items) { item in
+                    ForEach(template.items.indices, id: \.self) { index in
+                        let item = template.items[index]
                         HStack(spacing: 12) {
                             Circle()
                                 .fill(Theme.difficultyColor(item.difficulty))
@@ -34,6 +35,19 @@ struct TrainingTemplateEditorView: View {
                                     .foregroundStyle(Theme.textSecondary)
                             }
                             Spacer()
+                            Button {
+                                template.items[index].targetCount = max(1, template.items[index].targetCount - 1)
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                template.items[index].targetCount += 1
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                            }
+                            .buttonStyle(.plain)
                         }
                         .padding(.vertical, 6)
                     }
