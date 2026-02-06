@@ -41,6 +41,17 @@ enum Theme {
         }
     }
 
+    static func trainingStatusColor(completed: Int, target: Int) -> Color {
+        guard target > 0 else { return Color(.systemGray3) }
+        if completed == 0 {
+            return Color(.systemGray3)
+        } else if completed >= target {
+            return Color(red: 0.20, green: 0.68, blue: 0.38)
+        } else {
+            return Color(red: 0.96, green: 0.62, blue: 0.12)
+        }
+    }
+
     static func titleFont(size: CGFloat) -> Font {
         .custom("AvenirNext-DemiBold", size: size)
     }

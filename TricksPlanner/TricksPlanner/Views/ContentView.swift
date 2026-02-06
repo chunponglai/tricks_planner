@@ -20,6 +20,13 @@ struct ContentView: View {
 
             TabView {
                 NavigationStack {
+                    CalendarView()
+                }
+                .tabItem {
+                    Label("Calendar", systemImage: "calendar")
+                }
+
+                NavigationStack {
                     TrickListView()
                 }
                 .tabItem {
@@ -34,10 +41,10 @@ struct ContentView: View {
                 }
 
                 NavigationStack {
-                    CalendarView()
+                    TrainingView()
                 }
                 .tabItem {
-                    Label("Calendar", systemImage: "calendar")
+                    Label("Templates", systemImage: "square.stack.3d.up")
                 }
             }
             .tint(Theme.accent)

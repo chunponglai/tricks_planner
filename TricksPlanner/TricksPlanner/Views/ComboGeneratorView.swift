@@ -103,14 +103,6 @@ struct ComboGeneratorView: View {
             }
         }
         .navigationTitle("Combo")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Reset") {
-                    selections = [:]
-                    combo = []
-                }
-            }
-        }
         .scrollContentBackground(.hidden)
         .navigationDestination(isPresented: $showCombo) {
             ComboResultsScreen(combo: combo)

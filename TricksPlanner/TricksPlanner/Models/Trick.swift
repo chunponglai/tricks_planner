@@ -39,6 +39,126 @@ struct Challenge: Identifiable, Codable, Equatable {
     }
 }
 
+struct TrainingItem: Identifiable, Codable, Equatable {
+    let id: UUID
+    var trickId: UUID
+    var trickName: String
+    var category: String
+    var difficulty: Difficulty
+    var targetCount: Int
+    var completedCount: Int
+    var templateId: UUID?
+
+    init(id: UUID = UUID(),
+         trickId: UUID,
+         trickName: String,
+         category: String,
+         difficulty: Difficulty,
+         targetCount: Int,
+         completedCount: Int = 0,
+         templateId: UUID? = nil) {
+        self.id = id
+        self.trickId = trickId
+        self.trickName = trickName
+        self.category = category
+        self.difficulty = difficulty
+        self.targetCount = targetCount
+        self.completedCount = completedCount
+        self.templateId = templateId
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, trickId, trickName, category, difficulty, targetCount, completedCount, templateId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        trickId = try container.decode(UUID.self, forKey: .trickId)
+        trickName = try container.decode(String.self, forKey: .trickName)
+        category = try container.decode(String.self, forKey: .category)
+        difficulty = try container.decode(Difficulty.self, forKey: .difficulty)
+        targetCount = try container.decode(Int.self, forKey: .targetCount)
+        completedCount = try container.decode(Int.self, forKey: .completedCount)
+        templateId = try? container.decode(UUID.self, forKey: .templateId)
+    }
+}
+
+struct DailyTrainingPlan: Identifiable, Codable, Equatable {
+    let id: UUID
+    var date: Date
+    var items: [TrainingItem]
+    var appliedTemplateIds: [UUID]
+
+    init(id: UUID = UUID(), date: Date, items: [TrainingItem] = [], appliedTemplateIds: [UUID] = []) {
+        self.id = id
+        self.date = date
+        self.items = items
+        self.appliedTemplateIds = appliedTemplateIds
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, date, items, appliedTemplateIds
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        date = try container.decode(Date.self, forKey: .date)
+        items = try container.decode([TrainingItem].self, forKey: .items)
+        appliedTemplateIds = (try? container.decode([UUID].self, forKey: .appliedTemplateIds)) ?? []
+    }
+}
+
+struct TrainingTemplateItem: Identifiable, Codable, Equatable {
+    let id: UUID
+    var trickId: UUID
+    var trickName: String
+    var category: String
+    var difficulty: Difficulty
+    var targetCount: Int
+
+    init(id: UUID = UUID(),
+         trickId: UUID,
+         trickName: String,
+         category: String,
+         difficulty: Difficulty,
+         targetCount: Int) {
+        self.id = id
+        self.trickId = trickId
+        self.trickName = trickName
+        self.category = category
+        self.difficulty = difficulty
+        self.targetCount = targetCount
+    }
+}
+
+struct TrainingTemplate: Identifiable, Codable, Equatable {
+    let id: UUID
+    var name: String
+    var items: [TrainingTemplateItem]
+    var appliedOnce: Bool
+
+    init(id: UUID = UUID(), name: String, items: [TrainingTemplateItem] = [], appliedOnce: Bool = false) {
+        self.id = id
+        self.name = name
+        self.items = items
+        self.appliedOnce = appliedOnce
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, items, appliedOnce
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        items = try container.decode([TrainingTemplateItem].self, forKey: .items)
+        appliedOnce = (try? container.decode(Bool.self, forKey: .appliedOnce)) ?? false
+    }
+}
+
 struct Trick: Identifiable, Codable, Equatable {
     let id: UUID
     var name: String
