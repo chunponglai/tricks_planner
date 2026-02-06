@@ -5,10 +5,27 @@ struct ComboGeneratorView: View {
     @State private var selections: [String: Int] = [:]
     @State private var combo: [Trick] = []
     @State private var showCombo = false
+    @State private var maxDifficulty: Difficulty = .hard
+    @State private var randomAll = false
 
     private var categoriesWithTricks: [String] {
         let categories = Set(store.tricks.map { $0.category })
         return store.categories.filter { categories.contains($0) }
+    }
+
+    private var filteredCategoriesWithTricks: [String] {
+        let allowed = difficultyRank(maxDifficulty)
+        let categories = Set(store.tricks.filter { difficultyRank($0.difficulty) <= allowed }.map { $0.category })
+        return store.categories.filter { categories.contains($0) }
+    }
+
+    private func difficultyRank(_ difficulty: Difficulty) -> Int {
+        switch difficulty {
+        case .none: return 0
+        case .easy: return 1
+        case .medium: return 2
+        case .hard: return 3
+        }
     }
 
     var body: some View {
@@ -31,12 +48,24 @@ struct ComboGeneratorView: View {
                 .listRowBackground(Color.clear)
             }
 
+            Section("Difficulty") {
+                Picker("Max Difficulty", selection: $maxDifficulty) {
+                    ForEach(Difficulty.allCases) { option in
+                        Text(option.rawValue.capitalized).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Toggle("Random pick for me", isOn: $randomAll)
+                    .tint(Theme.accentSecondary)
+            }
+
             Section("Pick Categories") {
-                if categoriesWithTricks.isEmpty {
+                if filteredCategoriesWithTricks.isEmpty {
                     ContentUnavailableView("No Categories", systemImage: "tag", description: Text("Add some tricks first."))
                 } else {
-                    ForEach(categoriesWithTricks, id: \.self) { category in
-                        let maxCount = max(store.tricks.filter { $0.category == category }.count, 1)
+                    ForEach(filteredCategoriesWithTricks, id: \.self) { category in
+                        let maxCount = max(store.tricks.filter { $0.category == category && difficultyRank($0.difficulty) <= difficultyRank(maxDifficulty) }.count, 1)
                         Stepper(value: Binding(
                             get: { selections[category, default: 0] },
                             set: { selections[category] = min($0, maxCount) }
@@ -53,30 +82,27 @@ struct ComboGeneratorView: View {
             }
 
             Section {
-                Button("Reset") {
-                    selections = [:]
-                    combo = []
-                }
-                .foregroundStyle(Theme.textSecondary)
+                HStack {
+                    Button("Reset") {
+                        selections = [:]
+                        combo = []
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Theme.textSecondary)
 
-                Button("Generate Combo") {
-                    combo = store.randomCombo(from: selections)
-                    showCombo = true
+                    Spacer()
+
+                    Button("Generate Combo") {
+                        combo = store.randomCombo(from: selections, maxDifficulty: maxDifficulty, randomAll: randomAll)
+                        showCombo = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.accent)
+                    .disabled(store.tricks.isEmpty)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.accent)
-                .disabled(store.tricks.isEmpty)
             }
         }
         .navigationTitle("Combo")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Reset") {
-                    selections = [:]
-                    combo = []
-                }
-            }
-        }
         .scrollContentBackground(.hidden)
         .navigationDestination(isPresented: $showCombo) {
             ComboResultsScreen(combo: combo)
