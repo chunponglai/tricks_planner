@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.xcuserstate
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# SQLite
+*.db
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# iOS/Xcode
+DerivedData/
+*.xcuserstate
+
+# Node
+node_modules/
