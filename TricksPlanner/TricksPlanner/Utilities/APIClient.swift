@@ -3,7 +3,7 @@ import Foundation
 struct APIClient {
     static let shared = APIClient()
 
-    let baseURL = URL(string: "http://192.168.86.22:8000")!
+    let baseURL = URL(string: "https://tricks-planner.onrender.com")!
 
     private let logger = Logger()
 
