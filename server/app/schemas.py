@@ -106,3 +106,11 @@ class TrainingPlanOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SyncPayload(BaseModel):
+    categories: List[str] = []
+    tricks: list[dict] = []
+    templates: list[dict] = []
+    challenges: list[dict] = []
+    trainingPlans: list[dict] = []

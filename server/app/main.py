@@ -1,4 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+import json
+import logging
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from jose import JWTError, jwt
+from .config import settings
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .db import Base, engine, get_db
@@ -6,7 +10,38 @@ from . import models, schemas, auth
 
 Base.metadata.create_all(bind=engine)
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger("tricksplanner")
+
 app = FastAPI(title="TricksPlanner API")
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    user_email = "anonymous"
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        token = auth_header.split(" ", 1)[1]
+        try:
+            payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+            user_email = payload.get("sub") or "unknown"
+        except JWTError:
+            user_email = "invalid-token"
+
+    body_summary = ""
+    if request.headers.get("content-type", "").startswith("application/json"):
+        body_bytes = await request.body()
+        request._body = body_bytes  # allow downstream access
+        try:
+            payload = json.loads(body_bytes.decode("utf-8") or "{}")
+            body_summary = f" payload={payload}"
+        except Exception:
+            body_summary = " payload=<unparseable>"
+
+    logger.info("REQ %s %s user=%s%s", request.method, request.url.path, user_email, body_summary)
+    response = await call_next(request)
+    logger.info("RES %s %s user=%s -> %s", request.method, request.url.path, user_email, response.status_code)
+    return response
 
 
 @app.post("/auth/register", response_model=schemas.UserOut)
@@ -33,6 +68,27 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 @app.get("/me", response_model=schemas.UserOut)
 def me(current: models.User = Depends(auth.get_current_user)):
     return current
+
+
+@app.get("/sync", response_model=schemas.SyncPayload)
+def sync_get(db: Session = Depends(get_db), current: models.User = Depends(auth.get_current_user)):
+    blob = db.query(models.UserData).filter(models.UserData.user_id == current.id).first()
+    if not blob:
+        return schemas.SyncPayload()
+    return schemas.SyncPayload.model_validate_json(blob.data_json)
+
+
+@app.put("/sync", response_model=schemas.SyncPayload)
+def sync_put(payload: schemas.SyncPayload, db: Session = Depends(get_db), current: models.User = Depends(auth.get_current_user)):
+    blob = db.query(models.UserData).filter(models.UserData.user_id == current.id).first()
+    data_json = payload.model_dump_json()
+    if blob:
+        blob.data_json = data_json
+    else:
+        blob = models.UserData(user_id=current.id, data_json=data_json)
+        db.add(blob)
+    db.commit()
+    return payload
 
 
 # Tricks

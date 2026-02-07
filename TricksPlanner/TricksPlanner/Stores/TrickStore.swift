@@ -2,10 +2,15 @@ import Combine
 import Foundation
 
 final class TrickStore: ObservableObject {
+    @Published private(set) var isSyncing = false
+    @Published private(set) var isSyncQueued = false
+    @Published private(set) var syncError: String?
+
     @Published private(set) var tricks: [Trick] = [] {
         didSet {
             guard hasLoaded else { return }
             save()
+            scheduleSync()
         }
     }
 
@@ -13,6 +18,7 @@ final class TrickStore: ObservableObject {
         didSet {
             guard hasLoaded else { return }
             saveCategories()
+            scheduleSync()
         }
     }
 
@@ -20,6 +26,7 @@ final class TrickStore: ObservableObject {
         didSet {
             guard hasLoaded else { return }
             saveChallenges()
+            scheduleSync()
         }
     }
 
@@ -27,6 +34,7 @@ final class TrickStore: ObservableObject {
         didSet {
             guard hasLoaded else { return }
             saveTrainingPlans()
+            scheduleSync()
         }
     }
 
@@ -34,14 +42,35 @@ final class TrickStore: ObservableObject {
         didSet {
             guard hasLoaded else { return }
             saveTrainingTemplates()
+            scheduleSync()
         }
     }
 
     private var hasLoaded = false
+    private var authToken: String?
+    private var isApplyingRemote = false
+    private var syncTask: Task<Void, Never>?
+    private var syncFailureCount = 0
+    private var pendingSyncErrorToken: UUID?
+    private let syncEncoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return encoder
+    }()
+    private let syncDecoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
 
     init() {
         load()
         hasLoaded = true
+    }
+
+    func updateAuthToken(_ token: String?) {
+        authToken = token
     }
 
     // MARK: - CRUD
@@ -348,6 +377,130 @@ final class TrickStore: ObservableObject {
         return grouped.keys.sorted().map { key in
             (key, grouped[key]?.count ?? 0)
         }.filter { $0.1 > 0 }
+    }
+
+    // MARK: - Sync
+
+    @MainActor
+    func syncFromServer() async {
+        guard let token = authToken else { return }
+        isSyncing = true
+        syncError = nil
+        pendingSyncErrorToken = nil
+        do {
+            let payload = try await APIClient.shared.fetchSync(token: token)
+            isApplyingRemote = true
+            applySyncPayload(payload)
+            isApplyingRemote = false
+            syncFailureCount = 0
+        } catch {
+            syncFailureCount += 1
+            if syncFailureCount < 2 {
+                scheduleSync()
+            } else {
+                let token = UUID()
+                pendingSyncErrorToken = token
+                let message = error.localizedDescription
+                Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    await MainActor.run {
+                        guard let self else { return }
+                        if self.pendingSyncErrorToken == token && !self.isSyncing && !self.isSyncQueued {
+                            self.syncError = message
+                        }
+                    }
+                }
+                syncFailureCount = 0
+            }
+        }
+        isSyncing = false
+    }
+
+    @MainActor
+    func syncToServer() async {
+        guard let token = authToken else { return }
+        isSyncing = true
+        isSyncQueued = false
+        syncError = nil
+        pendingSyncErrorToken = nil
+        defer { isSyncing = false }
+        let payload = makeSyncPayload()
+        do {
+            try await APIClient.shared.pushSync(token: token, payload: payload)
+            syncError = nil
+            syncFailureCount = 0
+        } catch {
+            syncFailureCount += 1
+            if syncFailureCount < 2 {
+                scheduleSync()
+            } else {
+                let token = UUID()
+                pendingSyncErrorToken = token
+                let message = error.localizedDescription
+                Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    await MainActor.run {
+                        guard let self else { return }
+                        if self.pendingSyncErrorToken == token && !self.isSyncing && !self.isSyncQueued {
+                            self.syncError = message
+                        }
+                    }
+                }
+                syncFailureCount = 0
+            }
+        }
+    }
+
+    private func scheduleSync() {
+        guard let _ = authToken else { return }
+        guard !isApplyingRemote else { return }
+        isSyncQueued = true
+        syncError = nil
+        pendingSyncErrorToken = nil
+        syncTask?.cancel()
+        syncTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            guard let self else { return }
+            while await MainActor.run(resultType: Bool.self, body: { self.isSyncing }) {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+            await self.syncToServer()
+        }
+    }
+
+    private func makeSyncPayload() -> SyncPayload {
+        SyncPayload(
+            categories: categories,
+            tricks: tricks,
+            templates: trainingTemplates,
+            challenges: challenges,
+            trainingPlans: trainingPlans
+        )
+    }
+
+    func exportSyncData() throws -> Data {
+        let payload = makeSyncPayload()
+        return try syncEncoder.encode(payload)
+    }
+
+    func importSyncData(_ data: Data) throws {
+        let payload = try syncDecoder.decode(SyncPayload.self, from: data)
+        isApplyingRemote = true
+        applySyncPayload(payload)
+        isApplyingRemote = false
+        scheduleSync()
+    }
+
+    private func applySyncPayload(_ payload: SyncPayload) {
+        categories = payload.categories.isEmpty ? categories : payload.categories
+        if !categories.contains("Uncategorized") {
+            categories.append("Uncategorized")
+        }
+        tricks = payload.tricks
+        trainingTemplates = payload.templates
+        challenges = payload.challenges
+        trainingPlans = payload.trainingPlans
+        sortTricks()
     }
 
     // MARK: - Persistence

@@ -115,13 +115,16 @@ struct TrickListView: View {
         .navigationTitle("Tricks")
         .scrollContentBackground(.hidden)
         .listSectionSpacing(.compact)
+        .refreshable {
+            await store.syncFromServer()
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showAdd = true
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 16, weight: .bold))
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundStyle(Theme.accent)
                 }
             }
         }

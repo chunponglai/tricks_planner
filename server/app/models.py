@@ -17,6 +17,7 @@ class User(Base):
     templates = relationship("TrainingTemplate", back_populates="user", cascade="all, delete-orphan")
     challenges = relationship("Challenge", back_populates="user", cascade="all, delete-orphan")
     training_plans = relationship("DailyTrainingPlan", back_populates="user", cascade="all, delete-orphan")
+    data_blob = relationship("UserData", back_populates="user", cascade="all, delete-orphan", uselist=False)
 
 
 class Trick(Base):
@@ -93,3 +94,14 @@ class TrainingItem(Base):
     template_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     plan = relationship("DailyTrainingPlan", back_populates="items")
+
+
+class UserData(Base):
+    __tablename__ = "user_data"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+    data_json: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="data_blob")

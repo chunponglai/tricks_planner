@@ -17,6 +17,21 @@ struct CalendarView: View {
         let date: Date
     }
 
+    private struct WeekdayLabel: Identifiable {
+        let id: Int
+        let text: String
+    }
+
+    private let weekdayLabels: [WeekdayLabel] = [
+        WeekdayLabel(id: 0, text: "S"),
+        WeekdayLabel(id: 1, text: "M"),
+        WeekdayLabel(id: 2, text: "T"),
+        WeekdayLabel(id: 3, text: "W"),
+        WeekdayLabel(id: 4, text: "T"),
+        WeekdayLabel(id: 5, text: "F"),
+        WeekdayLabel(id: 6, text: "S")
+    ]
+
     private var monthDate: Date {
         calendar.date(byAdding: .month, value: monthOffset, to: Date()) ?? Date()
     }
@@ -116,8 +131,8 @@ struct CalendarView: View {
                     }
 
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7), spacing: 8) {
-                        ForEach(["S","M","T","W","T","F","S"], id: \.self) { label in
-                            Text(label)
+                        ForEach(weekdayLabels) { label in
+                            Text(label.text)
                                 .font(Theme.bodyFont(size: 12))
                                 .foregroundStyle(Theme.textSecondary)
                         }
@@ -356,6 +371,9 @@ struct CalendarView: View {
         .navigationTitle("Calendar")
         .scrollContentBackground(.hidden)
         .background(Theme.background.ignoresSafeArea())
+        .refreshable {
+            await store.syncFromServer()
+        }
         .overlay {
             ZStack {
                 if showItemComplete {

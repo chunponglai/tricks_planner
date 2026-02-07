@@ -95,12 +95,16 @@ struct TrainingView: View {
         }
         .navigationTitle("Templates")
         .scrollContentBackground(.hidden)
+        .refreshable {
+            await store.syncFromServer()
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
                     showNewTemplatePrompt = true
                 } label: {
-                    Image(systemName: "square.stack.3d.up.badge.plus")
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundStyle(Theme.accent)
                 }
             }
         }
